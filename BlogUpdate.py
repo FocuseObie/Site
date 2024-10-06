@@ -1,5 +1,6 @@
 import os
 from datetime import datetime
+import subprocess
 
 blog_file = "Blog.html"
 txt_folder = "./txt_files"
@@ -47,8 +48,8 @@ def update_blog():
     # Create a new blog post from the most recent .txt file
     new_post = create_blog_post(most_recent_file)
 
-    # Insert the new post into the blog HTML file before the closing </div> tag
-    blog_html = blog_html.replace('</div>', new_post + '</div>', 1)
+    # Insert the new post into the blog HTML file at the blog-content placeholder
+    blog_html = blog_html.replace('<div id="blog-content">', f'<div id="blog-content">\n{new_post}', 1)
 
     # Write the updated HTML back to the file
     with open(blog_file, 'w') as f:
@@ -58,3 +59,17 @@ def update_blog():
 
 if __name__ == '__main__':
     update_blog()
+
+def git_commit_and_push():
+    """Commit and push changes to GitHub."""
+    try:
+        subprocess.run(['git', 'add', 'Blog.html'], check=True)
+        subprocess.run(['git', 'commit', '-m', 'Update blog with new posts'], check=True)
+        subprocess.run(['git', 'push'], check=True)
+        print("Changes committed and pushed to GitHub.")
+    except subprocess.CalledProcessError as e:
+        print(f"Error during git operation: {e}")
+
+if __name__ == '__main__':
+    update_blog()  # First update the blog
+    git_commit_and_push()  # Then commit and push to GitHub
