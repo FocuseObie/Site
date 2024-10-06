@@ -7,38 +7,51 @@ blog_file = "Blog.html"
 docx_folder = "./docx_files"  # Folder to hold the .docx files
 
 def extract_text_from_docx(file_path):
-    """Extract text from .docx file and preserve basic formatting, including lists."""
+    """Extract text from .docx file and preserve basic formatting, including ordered and unordered lists."""
     doc = docx.Document(file_path)
     full_text = []
-    inside_list = False
+    inside_ul = False
+    inside_ol = False
 
     for para in doc.paragraphs:
-        # Check for bullet points (list items)
-        if para.style.name.startswith('List'):
-            # If we're entering a list, start the <ul> tag
-            if not inside_list:
-                full_text.append("<ul>")
-                inside_list = True
+        # Check for bullet points (unordered list)
+        if para.style.name.startswith('List Bullet'):
+            if not inside_ul:
+                full_text.append("<ul>")  # Start an unordered list
+                inside_ul = True
+            full_text.append(f"<li>{para.text}</li>")
+        # Check for numbered list (ordered list)
+        elif para.style.name.startswith('List Number'):
+            if not inside_ol:
+                full_text.append("<ol>")  # Start an ordered list
+                inside_ol = True
             full_text.append(f"<li>{para.text}</li>")
         else:
-            # If we were inside a list and encounter a non-list paragraph, close the list
-            if inside_list:
+            # Close any open lists when non-list paragraphs are encountered
+            if inside_ul:
                 full_text.append("</ul>")
-                inside_list = False
+                inside_ul = False
+            if inside_ol:
+                full_text.append("</ol>")
+                inside_ol = False
 
-            # Preserve headings, bold, and italic formatting
+            # Preserve headings, bold, and italic formatting, and handle encoding
+            para_text = para.text.encode('ascii', 'xmlcharrefreplace').decode('utf-8')  # Handle special characters
+            
             if para.style.name.startswith('Heading'):
-                full_text.append(f"<h2>{para.text}</h2>")
+                full_text.append(f"<h2>{para_text}</h2>")
             elif para.runs and para.runs[0].bold:
-                full_text.append(f"<b>{para.text}</b>")
+                full_text.append(f"<b>{para_text}</b>")
             elif para.runs and para.runs[0].italic:
-                full_text.append(f"<i>{para.text}</i>")
+                full_text.append(f"<i>{para_text}</i>")
             else:
-                full_text.append(f"<p>{para.text}</p>")
+                full_text.append(f"<p>{para_text}</p>")
     
-    # If the document ends inside a list, close the list
-    if inside_list:
+    # If the document ends inside a list, close it
+    if inside_ul:
         full_text.append("</ul>")
+    if inside_ol:
+        full_text.append("</ol>")
 
     return "\n".join(full_text)
 
