@@ -7,17 +7,13 @@ import re
 blog_file = "Blog.html"
 docx_folder = "./docx_files"  # Folder to hold the .docx files
 
-def detect_inline_numbered_list(text):
-    """Detects if a paragraph contains an inline numbered list like 1) item, 2) item."""
-    # Regular expression to detect inline numbered lists like '1) text'
-    return re.sub(r'(\d+)\)\s+', r'<li>\g<1></li>', text)
-
 def extract_text_from_docx(file_path):
-    """Extract text from .docx file and preserve basic formatting, including inline lists."""
+    """Extract text from .docx file and preserve basic formatting, including ordered and unordered lists."""
     doc = docx.Document(file_path)
     full_text = []
     inside_ul = False
     inside_ol = False
+    inline_list_buffer = []  # To store multi-line inline lists
 
     for para in doc.paragraphs:
         # Check for bullet points (unordered list)
@@ -34,17 +30,14 @@ def extract_text_from_docx(file_path):
             full_text.append(f"<li>{para.text}</li>")
         # Detect inline lists within paragraphs
         elif re.search(r'(\d+)\)\s+', para.text):
-            # If we're inside a list, close it before adding inline lists
-            if inside_ul:
-                full_text.append("</ul>")
-                inside_ul = False
-            if inside_ol:
-                full_text.append("</ol>")
-                inside_ol = False
-            # Convert inline numbered lists into ordered list
-            list_items = detect_inline_numbered_list(para.text)
-            full_text.append(f"<ol>{list_items}</ol>")
+            # Handle multi-line numbered lists
+            inline_list_buffer.append(f"<li>{para.text}</li>")
         else:
+            # Close any inline list and append its items as a proper list
+            if inline_list_buffer:
+                full_text.append("<ol>" + "".join(inline_list_buffer) + "</ol>")
+                inline_list_buffer = []  # Clear buffer
+
             # Close any open lists when non-list paragraphs are encountered
             if inside_ul:
                 full_text.append("</ul>")
@@ -70,6 +63,8 @@ def extract_text_from_docx(file_path):
         full_text.append("</ul>")
     if inside_ol:
         full_text.append("</ol>")
+    if inline_list_buffer:
+        full_text.append("<ol>" + "".join(inline_list_buffer) + "</ol>")  # Append any remaining inline list items
 
     return "\n".join(full_text)
 
