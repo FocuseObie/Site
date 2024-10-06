@@ -4,24 +4,42 @@ import subprocess
 import docx
 
 blog_file = "Blog.html"
-docx_folder = "./docx_files"  # Updated folder to hold the .docx files
+docx_folder = "./docx_files"  # Folder to hold the .docx files
 
 def extract_text_from_docx(file_path):
-    """Extract text from .docx file and preserve basic formatting."""
+    """Extract text from .docx file and preserve basic formatting, including lists."""
     doc = docx.Document(file_path)
     full_text = []
+    inside_list = False
 
     for para in doc.paragraphs:
-        # Preserve bold and italic formatting
-        if para.style.name.startswith('Heading'):
-            full_text.append(f"<h2>{para.text}</h2>")
-        elif para.runs and para.runs[0].bold:
-            full_text.append(f"<b>{para.text}</b>")
-        elif para.runs and para.runs[0].italic:
-            full_text.append(f"<i>{para.text}</i>")
+        # Check for bullet points (list items)
+        if para.style.name.startswith('List'):
+            # If we're entering a list, start the <ul> tag
+            if not inside_list:
+                full_text.append("<ul>")
+                inside_list = True
+            full_text.append(f"<li>{para.text}</li>")
         else:
-            full_text.append(f"<p>{para.text}</p>")
+            # If we were inside a list and encounter a non-list paragraph, close the list
+            if inside_list:
+                full_text.append("</ul>")
+                inside_list = False
+
+            # Preserve headings, bold, and italic formatting
+            if para.style.name.startswith('Heading'):
+                full_text.append(f"<h2>{para.text}</h2>")
+            elif para.runs and para.runs[0].bold:
+                full_text.append(f"<b>{para.text}</b>")
+            elif para.runs and para.runs[0].italic:
+                full_text.append(f"<i>{para.text}</i>")
+            else:
+                full_text.append(f"<p>{para.text}</p>")
     
+    # If the document ends inside a list, close the list
+    if inside_list:
+        full_text.append("</ul>")
+
     return "\n".join(full_text)
 
 def create_blog_post(file_path):
