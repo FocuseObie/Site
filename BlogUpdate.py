@@ -1,44 +1,61 @@
 import os
 from datetime import datetime
 import subprocess
+import docx
 
 blog_file = "Blog.html"
-txt_folder = "./txt_files"
+docx_folder = "./docx_files"  # Updated folder to hold the .docx files
+
+def extract_text_from_docx(file_path):
+    """Extract text from .docx file and preserve basic formatting."""
+    doc = docx.Document(file_path)
+    full_text = []
+
+    for para in doc.paragraphs:
+        # Preserve bold and italic formatting
+        if para.style.name.startswith('Heading'):
+            full_text.append(f"<h2>{para.text}</h2>")
+        elif para.runs and para.runs[0].bold:
+            full_text.append(f"<b>{para.text}</b>")
+        elif para.runs and para.runs[0].italic:
+            full_text.append(f"<i>{para.text}</i>")
+        else:
+            full_text.append(f"<p>{para.text}</p>")
+    
+    return "\n".join(full_text)
 
 def create_blog_post(file_path):
-    """Create an HTML blog post from a .txt file."""
-    with open(file_path, 'r') as f:
-        content = f.read()
-
-    title = os.path.basename(file_path).replace('.txt', '')
+    """Create an HTML blog post from a .docx file."""
+    content = extract_text_from_docx(file_path)
+    title = os.path.basename(file_path).replace('.docx', '')
     current_date = datetime.now().strftime('%b %d, %Y')
 
     new_post = f"""
     <div class="card">
         <h2>{title}</h2>
         <h5>{current_date}</h5>
-        <p>{content}</p>
+        {content}
     </div>
     """
     return new_post
 
-def get_most_recent_txt_file(folder):
-    """Find the most recent .txt file in the folder."""
-    txt_files = [os.path.join(folder, f) for f in os.listdir(folder) if f.endswith('.txt')]
+def get_most_recent_docx_file(folder):
+    """Find the most recent .docx file in the folder."""
+    docx_files = [os.path.join(folder, f) for f in os.listdir(folder) if f.endswith('.docx')]
 
-    if not txt_files:
+    if not docx_files:
         return None
 
-    # Get the most recent .txt file based on last modification time
-    most_recent_file = max(txt_files, key=os.path.getmtime)
+    # Get the most recent .docx file based on last modification time
+    most_recent_file = max(docx_files, key=os.path.getmtime)
     return most_recent_file
 
 def update_blog():
-    """Update the blog HTML file with the most recent .txt post."""
-    most_recent_file = get_most_recent_txt_file(txt_folder)
+    """Update the blog HTML file with the most recent .docx post."""
+    most_recent_file = get_most_recent_docx_file(docx_folder)
 
     if most_recent_file is None:
-        print("No .txt files found in the folder.")
+        print("No .docx files found in the folder.")
         return False
 
     # Read the existing blog HTML file
@@ -46,13 +63,8 @@ def update_blog():
         blog_html = f.read()
         print("Blog file read successfully.")
 
-    # Create a new blog post from the most recent .txt file
+    # Create a new blog post from the most recent .docx file
     new_post = create_blog_post(most_recent_file)
-
-    # Check if the content is already in the blog to avoid duplicate entries
-    if new_post in blog_html:
-        print("The blog is already up to date with this post.")
-        return False
 
     # Insert the new post into the blog HTML file at the correct placeholder
     blog_html = blog_html.replace('<div class="leftcolumn" id="blog">', f'<div class="leftcolumn" id="blog">\n{new_post}', 1)
@@ -64,19 +76,25 @@ def update_blog():
 
     return True
 
-if __name__ == '__main__':
-    update_blog()
-
 def git_commit_and_push():
     """Commit and push changes to GitHub."""
     try:
-        subprocess.run(['git', 'add', 'Blog.html'], check=True)
-        subprocess.run(['git', 'commit', '-m', 'Update blog with new posts'], check=True)
-        subprocess.run(['git', 'push'], check=True)
-        print("Changes committed and pushed to GitHub.")
+        # Check if there are changes to commit
+        result = subprocess.run(['git', 'status', '--porcelain'], capture_output=True, text=True)
+
+        # If there are changes, stage and commit them
+        if result.stdout.strip():
+            subprocess.run(['git', 'add', 'Blog.html'], check=True)
+            subprocess.run(['git', 'commit', '-m', 'Update blog with new posts'], check=True)
+            subprocess.run(['git', 'push'], check=True)
+            print("Changes committed and pushed to GitHub.")
+        else:
+            print("No changes to commit.")
     except subprocess.CalledProcessError as e:
         print(f"Error during git operation: {e}")
 
 if __name__ == '__main__':
-    update_blog()  # First update the blog
-    git_commit_and_push()  # Then commit and push to GitHub
+    # First update the blog
+    if update_blog():
+        # Then commit and push to GitHub if the blog was updated
+        git_commit_and_push()
