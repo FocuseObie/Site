@@ -7,33 +7,24 @@ blog_file = "Blog.html"
 docx_folder = "./docx_files"  # Folder to hold the .docx files
 
 def extract_text_from_docx(file_path):
-    """Extract text from .docx file and preserve basic formatting, including ordered and unordered lists."""
+    """Extract text from .docx file and preserve basic formatting, including lists."""
     doc = docx.Document(file_path)
     full_text = []
-    inside_ul = False
-    inside_ol = False
+    inside_list = False
 
     for para in doc.paragraphs:
-        # Check for bullet points (unordered list)
-        if para.style.name.startswith('List Bullet'):
-            if not inside_ul:
-                full_text.append("<ul>")  # Start an unordered list
-                inside_ul = True
-            full_text.append(f"<li>{para.text}</li>")
-        # Check for numbered list (ordered list)
-        elif para.style.name.startswith('List Number'):
-            if not inside_ol:
-                full_text.append("<ol>")  # Start an ordered list
-                inside_ol = True
+        # Check for bullet points (list items)
+        if para.style.name.startswith('List'):
+            # If we're entering a list, start the <ul> tag
+            if not inside_list:
+                full_text.append("<ul>")
+                inside_list = True
             full_text.append(f"<li>{para.text}</li>")
         else:
-            # Close any open lists when non-list paragraphs are encountered
-            if inside_ul:
+            # If we were inside a list and encounter a non-list paragraph, close the list
+            if inside_list:
                 full_text.append("</ul>")
-                inside_ul = False
-            if inside_ol:
-                full_text.append("</ol>")
-                inside_ol = False
+                inside_list = False
 
             # Preserve headings, bold, and italic formatting
             if para.style.name.startswith('Heading'):
@@ -45,11 +36,9 @@ def extract_text_from_docx(file_path):
             else:
                 full_text.append(f"<p>{para.text}</p>")
     
-    # If the document ends inside a list, close it
-    if inside_ul:
+    # If the document ends inside a list, close the list
+    if inside_list:
         full_text.append("</ul>")
-    if inside_ol:
-        full_text.append("</ol>")
 
     return "\n".join(full_text)
 
