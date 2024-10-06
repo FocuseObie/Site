@@ -2,49 +2,28 @@ import os
 from datetime import datetime
 import subprocess
 import docx
-import re
 
 blog_file = "Blog.html"
 docx_folder = "./docx_files"  # Folder to hold the .docx files
 
 def extract_text_from_docx(file_path):
-    """Extract text from .docx file and preserve basic formatting, including ordered and unordered lists."""
+    """Extract text from .docx file and preserve basic formatting, converting all lists to bullet points."""
     doc = docx.Document(file_path)
     full_text = []
     inside_ul = False
-    inside_ol = False
-    inline_list_buffer = []  # To store multi-line inline lists
 
     for para in doc.paragraphs:
-        # Check for bullet points (unordered list)
-        if para.style.name.startswith('List Bullet'):
+        # Convert both numbered and bullet-point lists to unordered lists (bullet points)
+        if para.style.name.startswith('List'):
             if not inside_ul:
                 full_text.append("<ul>")  # Start an unordered list
                 inside_ul = True
             full_text.append(f"<li>{para.text}</li>")
-        # Check for numbered list (ordered list)
-        elif para.style.name.startswith('List Number'):
-            if not inside_ol:
-                full_text.append("<ol>")  # Start an ordered list
-                inside_ol = True
-            full_text.append(f"<li>{para.text}</li>")
-        # Detect inline lists within paragraphs
-        elif re.search(r'(\d+)\)\s+', para.text):
-            # Handle multi-line numbered lists
-            inline_list_buffer.append(f"<li>{para.text}</li>")
         else:
-            # Close any inline list and append its items as a proper list
-            if inline_list_buffer:
-                full_text.append("<ol>" + "".join(inline_list_buffer) + "</ol>")
-                inline_list_buffer = []  # Clear buffer
-
-            # Close any open lists when non-list paragraphs are encountered
+            # Close any open unordered list when non-list paragraphs are encountered
             if inside_ul:
                 full_text.append("</ul>")
                 inside_ul = False
-            if inside_ol:
-                full_text.append("</ol>")
-                inside_ol = False
 
             # Preserve headings, bold, and italic formatting
             para_text = para.text.encode('ascii', 'xmlcharrefreplace').decode('utf-8')  # Handle special characters
@@ -61,10 +40,6 @@ def extract_text_from_docx(file_path):
     # If the document ends inside a list, close it
     if inside_ul:
         full_text.append("</ul>")
-    if inside_ol:
-        full_text.append("</ol>")
-    if inline_list_buffer:
-        full_text.append("<ol>" + "".join(inline_list_buffer) + "</ol>")  # Append any remaining inline list items
 
     return "\n".join(full_text)
 
