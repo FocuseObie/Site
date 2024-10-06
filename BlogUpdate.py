@@ -54,12 +54,12 @@ def update_blog():
         print("The blog is already up to date with this post.")
         return False
 
-    # Insert the new post into the blog HTML file at the blog-content placeholder
-    updated_html = blog_html.replace('<div id="blog-content">', f'<div id="blog-content">\n{new_post}', 1)
+    # Insert the new post into the blog HTML file at the correct placeholder
+    blog_html = blog_html.replace('<div class="leftcolumn" id="blog">', f'<div class="leftcolumn" id="blog">\n{new_post}', 1)
 
     # Write the updated HTML back to the file
     with open(blog_file, 'w') as f:
-        f.write(updated_html)
+        f.write(blog_html)
         print(f"Blog file updated with the most recent file: {os.path.basename(most_recent_file)}")
 
     return True
