@@ -39,23 +39,30 @@ def update_blog():
 
     if most_recent_file is None:
         print("No .txt files found in the folder.")
-        return
+        return False
 
     # Read the existing blog HTML file
     with open(blog_file, 'r') as f:
         blog_html = f.read()
+        print("Blog file read successfully.")
 
     # Create a new blog post from the most recent .txt file
     new_post = create_blog_post(most_recent_file)
 
+    # Check if the content is already in the blog to avoid duplicate entries
+    if new_post in blog_html:
+        print("The blog is already up to date with this post.")
+        return False
+
     # Insert the new post into the blog HTML file at the blog-content placeholder
-    blog_html = blog_html.replace('<div id="blog-content">', f'<div id="blog-content">\n{new_post}', 1)
+    updated_html = blog_html.replace('<div id="blog-content">', f'<div id="blog-content">\n{new_post}', 1)
 
     # Write the updated HTML back to the file
     with open(blog_file, 'w') as f:
-        f.write(blog_html)
+        f.write(updated_html)
+        print(f"Blog file updated with the most recent file: {os.path.basename(most_recent_file)}")
 
-    print(f"Blog updated with the most recent file: {os.path.basename(most_recent_file)}")
+    return True
 
 if __name__ == '__main__':
     update_blog()
